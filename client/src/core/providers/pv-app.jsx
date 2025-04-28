@@ -37,8 +37,14 @@ import React, {
   useEffect, 
   useState } from 'react';
 
-/*================================== Utils ===================================*/
-import * as Server from '../../utils/server.js';
+/*================================= Modules ==================================*/
+import * as Main from '../../modules/main.js';
+
+/*==============================================================================
+------------------------------------ Config ------------------------------------
+==============================================================================*/
+// Configures the main module.
+Main.config();
 
 /*==============================================================================
 ------------------------------------- Defs -------------------------------------
@@ -112,14 +118,17 @@ function PvApp({ children }) {
    */
   const [connection, setConnection] = useState(window.CONN_STATE.PENDING);
 
-  /*---------------------------------- APIs ----------------------------------*/
-
   /*------------------------------- useEffect --------------------------------*/
   useEffect(() => {
-    Server.setOnOpenConnection(() => {
-      Server.login('asdasd', 'asdasd');
-      setConnection(window.CONN_STATE.CONNECTED); });
-    Server.ping();
+    Main.connectAndRecoverSession({
+      'onOpenConnection': () => {
+        setConnection(window.CONN_STATE.CONNECTED); },
+      'onCloseConnection': () => {
+        setConnection(window.CONN_STATE.DISCONNECTED); },
+      'success': () => {
+        setAuthentication(window.AUTH_STATE.AUTHENTICATED); },
+      'error': () => {
+        setAuthentication(window.AUTH_STATE.UNAUTHENTICATED); }});
   }, []);
 
   /*================================== JSX ===================================*/

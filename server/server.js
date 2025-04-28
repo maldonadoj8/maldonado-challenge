@@ -1,8 +1,24 @@
 /*==============================================================================
+------------------------------------- Defs -------------------------------------
+==============================================================================*/
+/**
+ * @typedef {Object} ApiResponse
+ * @property {string} api - The API endpoint or action name.
+ * @property {number|string} messageId - The unique identifier for the 
+ * request/response pair.
+ * @property {boolean} [success] - Indicates if the operation was successful.
+ * @property {string} [description] - Human-readable message about the result.
+ * @property {Object} [data] - The payload of the response (e.g., records, user 
+ * info, etc.).
+ * @property {string|Object} [error] - Error message or object if the operation 
+ * failed.
+ */
+
+/*==============================================================================
 ----------------------------------- Imports ------------------------------------
 ==============================================================================*/
 
-/*--------------------------------- Express ---------------------------------*/
+/*--------------------------------- Express ----------------------------------*/
 import express from 'express';
 
 /*----------------------------------- Node -----------------------------------*/
@@ -15,7 +31,7 @@ import cors from 'cors';
 import { WebSocketServer } from 'ws';
 
 /*----------------------------------- API ------------------------------------*/
-import { login, edit_profile, recover_session } from './api.js';
+import { login, edit_profile, recover_session, log_out } from './api.js';
 
 /*==============================================================================
 ---------------------------------- Constants -----------------------------------
@@ -57,10 +73,12 @@ WEBSOCKET_SERVER.on('connection', (ws) => {
       return; }
 
     // Prepare the response object.
-    let response = { 
-      'api'   : request.api,
-      'ticket': request.ticket
-    };
+    let response = {
+      'api'        : request.api,
+      'messageId'  : request.messageId,
+      'success'    : false,
+      'description': '',
+      'data'       : {} };
 
     // Handle API requests.
     switch (request.api) {
@@ -68,36 +86,77 @@ WEBSOCKET_SERVER.on('connection', (ws) => {
       /*------------------------------- Login --------------------------------*/
       case 'login': {
         const result = await login(request.data.email, request.data.password);
-        response.data = result;
-        if(result.success) {
-          ws.userEmail = result.user.email; }
+
+        response.data        = result.data || {};
+        response.success     = !!result.success;
+        response.description = result.description || (result.success ? 'Login successful.' : 'Login failed.');
+
+        if(!result.success && result.error) { 
+          response.error = result.error; }
+        if(result.success && result.user && result.user.guid) {
+          ws.userGuid = result.user.guid; }
         break; }
 
       /*-------------------------- Recover Session ---------------------------*/
       case 'recover_session': {
         const result = await recover_session(request.data.token);
-        response.data = result;
-        if(result.success) {
-          ws.userEmail = result.user.email; }
+
+        response.data        = result.data || {};
+        response.success     = !!result.success;
+        response.description = result.description || (result.success ? 'Session recovered.' : 'Session recovery failed.');
+
+        if(!result.success && result.error) { 
+          response.error = result.error; }
+        if(result.success && result.user && result.user.guid) {
+          ws.userGuid = result.user.guid; }
         break; }
 
       /*---------------------------- Edit Profile ----------------------------*/
       case 'edit_profile': {
-        if(!ws.userEmail) {
-          response.data = { success: false, error: 'Not authenticated' }; } 
+        if(!ws.userGuid) {
+          response.success     = false;
+          response.description = 'Not authenticated.';
+          response.error       = 'Not authenticated.'; } 
         else {
-          const result = await edit_profile(ws.userEmail, request.data.newProfile);
-          response.data = result; }
+          const result = await edit_profile(ws.userGuid, request.data.field, request.data.value);
+
+          response.data        = result.data || {};
+          response.success     = !!result.success;
+          response.description = result.description || (result.success ? 'Profile updated.' : 'Profile update failed.');
+
+          if(!result.success && result.error) { 
+            response.error = result.error; }}
+        break; }
+
+      /*------------------------------ Log Out -------------------------------*/
+      case 'log_out': {
+        console.log(ws.userGuid);
+        if(!ws.userGuid) {
+          response.success     = false;
+          response.description = 'Not authenticated.';
+          response.error       = 'Not authenticated.'; }
+        else {
+          log_out(ws.userGuid);
+          ws.userGuid          = undefined;
+          response.success     = true;
+          response.description = 'Session closed.';
+          response.data        = {}; }
         break; }
 
       /*-------------------------------- Ping --------------------------------*/
       case 'ping': 
-        response.data = { success: true, message: 'pong' };
+        response.success     = true;
+        response.description = 'pong';
+        response.data        = {};
         break;
 
       /*------------------------------ Default -------------------------------*/
       default:
-        response.data = { success: false, error: 'Unknown API' }; }
+        response.success     = false;
+        response.description = 'Unknown API.';
+        response.error       = 'Unknown API';
+        response.data        = {};
+    }
 
     ws.send(JSON.stringify(response)); });
     

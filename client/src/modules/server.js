@@ -1,11 +1,9 @@
 /*==============================================================================
------------------------------------ Imports ------------------------------------
-==============================================================================*/
-
-/*==============================================================================
 ----------------------------------- Exports ------------------------------------
 ==============================================================================*/
 export { 
+  api, 
+  
   connectWebSocket, 
   disconnectWebSocket,
   sendMessage,
@@ -14,11 +12,12 @@ export {
   setOnCloseConnection,
   setOnMessageReceived,
   setOnErrorReceived, 
+  setShowMessage,
   
-  ping, 
-  login,
-  editProfile,
-  recoverSession };
+  ping,
+  addHandler,
+  removeHandler,
+  createHandler };
 
 /*==============================================================================
 ---------------------------------- Constants -----------------------------------
@@ -40,6 +39,32 @@ let automaticReconection = true;
 ==============================================================================*/
 function debug_p() {
   return debug; }
+
+/**
+ * Shows a message received in a response object.
+ *
+ * @param {Object} message - Response received from the server.
+ */
+function _showMessage(message) {
+  if(debug_p()) {
+    console.log(`Message: ${message.description}`); }
+  if(typeof showMessage === 'function') {
+    showMessage(message); }};
+
+/**
+ * Hook for handling a message received in a response object.
+ */
+let showMessage = () => {};
+
+/**
+ * Sets the function to use when a response of type MESSAGE is received.
+ *
+ * @param {function} fn - The function to execute.
+ * @return {function} The function to execute.
+ */
+function setShowMessage(fn) {
+  showMessage = fn;
+  return fn; };
 
 /*==============================================================================
 ----------------------------------- Handlers -----------------------------------
@@ -113,10 +138,17 @@ function setOnCloseConnection(fn) {
  */
 function _onMessageReceived(e) {
   if(debug_p()) {
-    console.log('WebSocket message received');
-    console.log(e); }
+    console.log('WebSocket message received'); }
   if(typeof onMessageReceived === 'function') {
-    onMessageReceived(e); }};
+    onMessageReceived(e); }
+  try {
+    const msg = JSON.parse(e.data);
+    console.log(msg);
+    if(msg.api) {
+      callHandlers(msg.api, msg); }} 
+  catch (err) {
+    if(debug_p()) {
+      console.error('Failed to parse server message', err); }}};
 
 /**
  * Alternative handler for WebSocket message event.
@@ -164,7 +196,7 @@ function setOnErrorReceived(fn) {
   return fn; }
 
 /*==============================================================================
------------------------------------ Functions ----------------------------------
+---------------------------------- Functions -----------------------------------
 ==============================================================================*/
 function connectWebSocket () {
   if(webSocket && (webSocket.readyState === webSocket.OPEN || webSocket.readyState === webSocket.CONNECTING)) {
@@ -193,20 +225,85 @@ function sendMessage(data) {
       setTimeout(() => { connectWebSocket(); }, 1000); }}};
 
 function api(params) {
-  let api     = params.api;
-  let data    = params.data ?? {};
-  let ticket  = Math.floor(Math.random() * (1000000000000 - 0 + 1) + 0);
-  let request = { api, ticket, data };
+  let api       = params.api;
+  let data      = params.data ?? {};
+  let messageId = Math.floor(Math.random() * (1000000000000 - 0 + 1) + 0);
+  let handler   = params.handler;
+  if(handler) {
+    addHandler(api, messageId, handler); }
+  let request = { api, messageId, data };
   sendMessage(request); };
 
 function ping() {
   api({ 'api': 'ping' }); };
-  
-function login(email, password) {
-  api({ 'api': 'login', 'data': { email, password } }); }
 
-function editProfile(field, value) {
-  api({ 'api': 'edit_profile', 'data': { field, value } }); }
+/*==============================================================================
+----------------------------------- Handlers -----------------------------------
+==============================================================================*/
+// The handlers object stores all handlers for different APIs.
+const handlers = {};
 
-function recoverSession(token) {
-  api({ 'api': 'recover_session', 'data': { token } }); }
+/**
+ * Adds a handler for a specific API message from the server.
+ * 
+ * @param {string} apiName - The API or entity name to handle.
+ * @param {string|number} messageId - A unique message identifier.
+ * @param {Function} handler - The function to handle the message.
+ */
+function addHandler(apiName, messageId, handler) {
+  if(!handlers[apiName]) {
+    handlers[apiName] = {}; }
+  handlers[apiName][messageId] = handler; };
+
+/**
+ * Removes a handler for a specific API message.
+ * 
+ * @param {string} apiName - The API or entity name.
+ * @param {string|number} messageId - The message identifier.
+ */
+function removeHandler(apiName, messageId) {
+  if(handlers[apiName]) {
+    delete handlers[apiName][messageId]; }};
+
+/**
+ * Calls handlers for a given API/entity name with the received message.
+ * If a messageId is present in the message, only the handler registered with 
+ * that messageId will be called.
+ * If no messageId is present, all handlers for the API are called.
+ * 
+ * @param {string} apiName
+ * @param {Object} message
+ */
+function callHandlers(apiName, message) {
+  if(handlers[apiName]) {
+    if(message.messageId && handlers[apiName][message.messageId]) {
+      if(typeof handlers[apiName][message.messageId] === 'function') {
+        handlers[apiName][message.messageId](message); }} 
+    else {
+      for(const id in handlers[apiName]) {
+        if(typeof handlers[apiName][id] === 'function') {
+          handlers[apiName][id](message); }}}}};
+
+/**
+ * Creates a simple handler for server messages.
+ *
+ * @param {Object} handlers - Handler configuration object.
+ * @param {Function} [handlers.success] - Function to call if the response 
+ * message is successful (message.success === true).
+ * @param {Function} [handlers.error] - Function to call if the response message 
+ * is not successful (message.success === false).
+ * @param {Function} [handlers.finally] - Function to call after success or 
+ * error handler, always runs.
+ * 
+ * @returns {Function} Handler function to process the server response.
+ */
+function createHandler(handlers = {}) {
+  return function(message) {
+    if(message.description) {
+      _showMessage(message); }
+    if(typeof handlers.success === 'function' && message?.success) {
+      handlers.success(message); } 
+    else if(typeof handlers.error === 'function' && !message?.success) {
+      handlers.error(message); }
+    if(typeof handlers.finally === 'function') {
+      handlers.finally(message); }}; };

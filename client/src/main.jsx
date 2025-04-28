@@ -32,6 +32,10 @@ import { CssBaseline } from '@mui/material';
 // Custom theme.
 import { THEME } from './config/cf-theme.jsx';
 
+/*================================ Components ================================*/
+// Snackbar component.
+import CpSnackBar from './common/components/cp-snackbar.jsx';
+
 /*==============================================================================
 --------------------------------- Entry point ----------------------------------
 ==============================================================================*/
@@ -50,6 +54,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </PvApi>
 
     {/*------------------------------ Snackbar ------------------------------*/}
-    {/* <CpSnackBar /> */}
+    <CpSnackBar />
   </ThemeProvider>
 );

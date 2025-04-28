@@ -42,6 +42,7 @@ function WpApp({ children, authRequired }) {
 
   // If not connected or authentication is pending, show the Connecting view.
   if(connection === window.CONN_STATE.PENDING 
+    || connection === window.CONN_STATE.DISCONNECTED
     || authentication === window.AUTH_STATE.PENDING) {
     return <VwConnecting />; }
 
