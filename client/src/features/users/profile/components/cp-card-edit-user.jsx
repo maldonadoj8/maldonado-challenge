@@ -102,7 +102,8 @@ function CpCardEditUser({ user }) {
       <CpCardList>
 
         {/*---------------------------- 1st row -----------------------------*/}
-        <CpCardRow>
+        <CpCardRow 
+        direction={{ xs: 'column', sm: 'row' }}>
 
           {/*-------------------------- First name --------------------------*/}
           <CpCardEditableField 
@@ -138,7 +139,8 @@ function CpCardEditUser({ user }) {
         </CpCardRow>
 
         {/*---------------------------- 2nd row -----------------------------*/}
-        <CpCardRow>
+        <CpCardRow 
+        direction={{ xs: 'column', sm: 'row' }}> 
 
           {/*---------------------------- Email -----------------------------*/}
           <CpCardEditableField 
@@ -176,6 +178,7 @@ function CpCardEditUser({ user }) {
 
         {/*---------------------------- 3rd row -----------------------------*/}
         <CpCardRow 
+        direction={{ xs: 'column', sm: 'row' }}
         divider={false}>
 
           {/*---------------------------- Phone -----------------------------*/}

@@ -99,7 +99,7 @@ function VwProfile() {
         fullWidth 
         sx={{
           backgroundColor: 'grey.200' }}>
-          {editing ? 'Cancel' : 'Edit'}
+          {editing ? 'Done' : 'Edit'}
         </CpButtonLoader>
 
         {/*----------------------------- Logout -----------------------------*/}

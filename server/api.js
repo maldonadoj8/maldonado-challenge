@@ -71,6 +71,15 @@ export async function login(email, password) {
  * @returns {Promise<Object>} An object with success, data, and optional error/description.
  */
 export async function edit_profile(userGuid, field, value) {
+  // List of sensitive fields that cannot be modified
+  const SENSITIVE_FIELDS = ['guid', '_id', 'isActive', 'balance', 'picture', 'password', 'id_entity', 'id', 'entityId', 'email'];
+  // Block modification if the field is sensitive
+  if(SENSITIVE_FIELDS.includes(field) || field.startsWith('id')) {
+    return {
+      success: false,
+      data: {},
+      error: 'This field is protected and cannot be modified.',
+      description: `Modification of the field '${field}' is not allowed.` }; }
   // Gets the user from the database.
   const user = db.data.users.find(u => u.guid === userGuid);
   // If the user exists, try to update its information.
@@ -93,16 +102,13 @@ export async function edit_profile(userGuid, field, value) {
       success    : true,
       data       : { USER: [userWithEntity] },
       description: 'Profile updated.'
-    };
-  } else {
+    }; } 
+  else {
     return {
       success: false,
       data: { USER: [] },
       error: 'User not found',
-      description: 'Profile update failed.'
-    };
-  }
-}
+      description: 'Profile update failed.' }; }};
 
 /**
  * Recovers a user session using a session token (identified by guid).
