@@ -49,12 +49,10 @@ import logo from '../../../../assets/logo.png';
  */
 export default function VwLogin() {
 
-  /*-------------------------------- useCxApi ---------------------------------*/
+  /*-------------------------------- useCxApi --------------------------------*/
   // API call state.
   const { apiState, apiStateHandler } = useCxApi();
 
-  console.error('apiState', apiState);
-  
   /*-------------------------------- useState --------------------------------*/
   // State for login form data.
   const [loginData, setLoginData] = useState({
@@ -74,12 +72,11 @@ export default function VwLogin() {
   /**
    * Login API call.
    */
-  const apiSessionLogin =
+  const apiSessionLogin = useMemo(() =>
     createApiWithState({
       'func'   : window.Session.login,
       'handler': apiStateHandler,
-      'ticket' : 'Session.login',
-    });
+      'ticket' : 'Session.login'}), [apiStateHandler]);
 
   /*-------------------------------- Handlers --------------------------------*/
   /**
@@ -112,20 +109,14 @@ export default function VwLogin() {
     }, {
       'success': (message) => {
         window.LS.setSessionToken(message.data.SESSION[0].token);
+        window.LS.setCurrentUser(message.data.USER[0]);
         console.log('Login successful:', message);
-        window.location.reload();
-      },
+        window.location.reload(); },
       'error'  : (error) => {
-        console.error('Login error:', error);
-      },
+        console.error('Login error:', error); },
       'finally': () => {
-        apiStateHandler({
-          
-        });
-        console.log('Login request completed');
-      },  
-    });
-  }, [loginData, apiSessionLogin, apiStateHandler]), 1000);
+        console.log('Login request completed'); }});
+  }, [loginData, apiSessionLogin]), 1000);
 
   /*================================== JSX ===================================*/
   return ( 

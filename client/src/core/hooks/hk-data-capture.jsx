@@ -4,11 +4,21 @@
 
 /*---------------------------------- React -----------------------------------*/
 // React modules.
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 /*-------------------------------- Utilities --------------------------------*/
+// API utilities.
+import { createApiWithState } from '../../utils/ut-api.js';
+
 // Text utilities.
 import * as utText from '../../utils/ut-text.js';
+
+// Function utilities.
+import { debounce } from '../../utils/ut-function.js';
+
+/*--------------------------------- Context ----------------------------------*/
+// Custom hook useCxApi.
+import { useCxApi } from '../../core/providers/pv-api.jsx';
 
 /*==============================================================================
 -------------------------------- Configurations --------------------------------
@@ -31,20 +41,6 @@ const FIELD_CONFIGURATIONS = {
     'maxLength'     : 20
   },
   'password': { },
-  'code': {
-    'keyPattern'    : utText.isAlphanumeric,
-    'onChangeFormat': (value) => utText.format2FACode(value, 20),
-    'sanitize'      : (value) => utText.sanitizeAlphanumeric(value),
-    'maxLength'     : 20
-  },
-  'money': {
-    'keyPattern'    : utText.isNumberOrDot,
-    'onChangeFormat': (value) => utText.formatMoney(value),
-    'onBlurFormat'  : (value) => utText.formatMoneyPost(value),
-    'sanitize'      : (value) => utText.sanitizeDecimalNumber(value),
-    'parse'         : (value) => parseFloat(value),
-    'maxLength'     : 10
-  },
   'id': {
     'keyPattern'    : utText.isNumber,
     'sanitize'      : (value) => utText.sanitizeNumber(value),
@@ -56,18 +52,6 @@ const FIELD_CONFIGURATIONS = {
     'onChangeFormat': (value) => utText.formatBasicDescription(value),
     'sanitize'      : (value) => utText.sanitizeDescription(value),
     'maxLength'     : 100
-  },
-  'decimal_number': {
-    'keyPattern'    : utText.isNumberOrDot,
-    'onChangeFormat': (value) => utText.formatDecimalNumber(value),
-    'onBlurFormat'  : (value) => utText.formatDecimalNumberPost(value),
-    'sanitize'      : (value) => utText.sanitizeDecimalNumber(value)
-  },
-  'card': {
-    'keyPattern'    : utText.isNumber,
-    'onChangeFormat': (value) => utText.formatCardNumber(value),
-    'sanitize'      : (value) => utText.sanitizeNumber(value),
-    'maxLength'     : 16
   },
   'phone': {
     'keyPattern'    : utText.isNumber,
@@ -114,13 +98,32 @@ const FIELD_CONFIGURATIONS = {
  * specific field.
  */
 export function useCaptureFields({ 
+  editApi = null,
   fieldsConfig = {}, 
   initialValues = {}, 
-  setExternalState = null }) {
+  setExternalState = null, 
+  conditionalState = null, 
+  editRecord = null }) {
   
+  /*-------------------------------- useCxApi --------------------------------*/
+  // API call state.
+  const { apiState, apiStateHandler } = useCxApi();
+
   /*-------------------------------- useState --------------------------------*/
   // Field values.
   const [values, setValues] = useState(initialValues);
+
+  /*--------------------------------- useRef ---------------------------------*/
+  /**
+   * Debounce edition API.
+   */
+  const refFuncs = useRef({
+    'edicion': editApi && debounce(createApiWithState({
+      'func'   : editApi.func,
+      'handler': apiStateHandler,
+      'ticket' : editApi.ticket
+    }), 1000)
+  });
 
   /*-------------------------------- Methods ---------------------------------*/
   /**
@@ -151,6 +154,11 @@ export function useCaptureFields({
           setExternalState(prev => ({
             ...prev,
             [name]: newValue })); }
+        if(conditionalState) {
+          refFuncs.current.edicion({
+            'id'   : editRecord.id,
+            'field': name,
+            'value': newValue }); }
       },
       
       /*----------------------------- onKeyDown -----------------------------*/
@@ -172,17 +180,18 @@ export function useCaptureFields({
         // Update internal state.
         setValues(prev => ({
           ...prev,
-          [name]: newValue }));
+          [name]: newValue }));``
         // Update external state if provided.
         if(setExternalState) {
           setExternalState(prev => ({
             ...prev,
             [name]: newValue })); }
       }};
-  }, [fieldsConfig, setExternalState]);
+  }, [fieldsConfig, setExternalState, conditionalState, editRecord]);
 
   /*================================= Return =================================*/
   return {
+    apiState,
     values,
     setValues,
     generateHandlers,

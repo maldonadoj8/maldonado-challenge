@@ -34,6 +34,7 @@ export function getCurrentUser() {
  * @param {Object} user
  */
 export function setCurrentUser(user) {
+  window.CurrentUser = user;
   localStorage.setItem('current_user', JSON.stringify(user)); }
 
 /**

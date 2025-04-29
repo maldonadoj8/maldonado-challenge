@@ -2,7 +2,7 @@
   "name": "maldonado-challenge",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "cd server && npm run dev",
+    "server": "cd server && npm run start",
     "client": "cd client && npm run dev"
   },
   "devDependencies": {

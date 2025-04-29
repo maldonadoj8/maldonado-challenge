@@ -26,7 +26,6 @@ const sessions = {};
 /*==============================================================================
 ------------------------------------- APIs -------------------------------------
 ==============================================================================*/
-
 /**
  * Authenticates a user by email and password, creates a session token, and returns user info.
  *
@@ -43,10 +42,13 @@ export async function login(email, password) {
   if(user) {
     const token = crypto.randomUUID();
     sessions[token] = user.guid;
+    // Add id_entity to user and session
+    const userWithEntity = { ...user, id_entity: 1, id: user._id };
+    const sessionObj = { token, userGuid: user.guid, id_entity: 2, id: token };
     return {
-      user,
-      success: true,
-      data: { USER: [user], SESSION: [{ token, userGuid: user.guid }] },
+      user       : userWithEntity,
+      success    : true,
+      data       : { USER: [userWithEntity], SESSION: [sessionObj] },
       description: 'Login successful.'
     };
   } else {
@@ -86,9 +88,10 @@ export async function edit_profile(userGuid, field, value) {
     else {
       user[field] = value; }
     await db.write();
+    const userWithEntity = { ...user, id_entity: 1, id: user._id };
     return {
-      success: true,
-      data: { USER: [user] },
+      success    : true,
+      data       : { USER: [userWithEntity] },
       description: 'Profile updated.'
     };
   } else {
@@ -111,26 +114,30 @@ export async function recover_session(token) {
   const userGuid = sessions[token];
   if(!userGuid) {
     return {
-      success: false,
-      data: { USER: [], SESSION: [] },
-      error: 'Invalid token',
+      success    : false,
+      data       : { USER: [], SESSION: [] },
+      error      : 'Invalid token',
       description: 'Session recovery failed.'
     };
   }
   const user = db.data.users.find(u => u.guid === userGuid);
-  return user
-    ? {
-        user,
-        success: true,
-        data: { USER: [user], SESSION: [{ token, userGuid }] },
-        description: 'Session recovered.'
-      }
-    : {
-        success: false,
-        data: { USER: [], SESSION: [] },
-        error: 'User not found',
-        description: 'Session recovery failed.'
-      };
+  if(user) {
+    const userWithEntity = { ...user, id_entity: 1, id: user._id };
+    const sessionObj = { token, userGuid, id_entity: 2, id: token };
+    return {
+      user       : userWithEntity,
+      success    : true,
+      data       : { USER: [userWithEntity], SESSION: [sessionObj] },
+      description: 'Session recovered.'
+    };
+  } else {
+    return {
+      success    : false,
+      data       : { USER: [], SESSION: [] },
+      error      : 'User not found',
+      description: 'Session recovery failed.'
+    };
+  }
 }
 
 /**
