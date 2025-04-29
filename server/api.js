@@ -38,6 +38,7 @@ export async function login(email, password) {
   console.log('Login attempt:', email, password);
   // Checks if the user exists in the database for a simple auth.
   const user = db.data.users.find(u => u.email === email && u.password === password);
+  console.log('db:', db.data);
   // If the user exists, create a session token and return it.
   if(user) {
     const token = crypto.randomUUID();
@@ -45,21 +46,21 @@ export async function login(email, password) {
     // Add id_entity to user and session
     const userWithEntity = { ...user, id_entity: 1, id: user._id };
     const sessionObj = { token, userGuid: user.guid, id_entity: 2, id: token };
+    console.log('Login succeeded:', email, password);
     return {
       user       : userWithEntity,
       success    : true,
       data       : { USER: [userWithEntity], SESSION: [sessionObj] },
       description: 'Login successful.'
-    };
-  } else {
+    }; } 
+  else {
+    console.log('Login failed:', email, password);
     return {
       success: false,
       data: { USER: [], SESSION: [] },
       error: 'Invalid credentials',
       description: 'Login failed.'
-    };
-  }
-}
+    }; }};
 
 /**
  * Updates a specific field of a user profile identified by guid.
